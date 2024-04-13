@@ -1,28 +1,93 @@
-from queue import Queue
+from queue import Queue, Empty
 from threading import Thread, Event
 import time
+import os
+import multiprocessing
 
 class ThreadPool:
-    def __init__(self):
-        # You must implement a ThreadPool of TaskRunners
-        # Your ThreadPool should check if an environment variable TP_NUM_OF_THREADS is defined
-        # If the env var is defined, that is the number of threads to be used by the thread pool
-        # Otherwise, you are to use what the hardware concurrency allows
-        # You are free to write your implementation as you see fit, but
-        # You must NOT:
-        #   * create more threads than the hardware concurrency allows
-        #   * recreate threads for each task
-        pass
+    def __init__(self, data_ingestor):
+        self.task_queue = Queue()
+        self.thread_list = []
+        self.data_ingestor = data_ingestor
+        self.accept_tasks = Event()
+        self.accept_tasks.set()
+
+        if 'TP_NUM_OF_THREADS' in os.environ:
+            self.nr_threads = os.environ['TP_NUM_OF_THREADS']
+        else:
+            self.nr_threads = multiprocessing.cpu_count()
+
+        for i in range(self.nr_threads):
+            t = TaskRunner(self.task_queue, i, self.data_ingestor, self.accept_tasks)
+            t.start()
+            self.thread_list.append(t)
+
+            
+    def add_task(self, task):
+        if self.accept_tasks:
+            self.task_queue.put(task)
+
+    def stop(self):
+        self.accept_tasks.clear()  # Stop accepting new tasks
+        for t in self.thread_list:
+            t.join()  # Wait for all threads to finish
+
+        folder_path = "/results"
+        os.rmdir(folder_path)
 
 class TaskRunner(Thread):
-    def __init__(self):
-        # TODO: init necessary data structures
-        pass
+    def __init__(self, task_queue, index, data_ingestor, accept_tasks):
+        super().__init__()
+        self.index = index
+        self.task_queue = task_queue
+        self.data_ingestor = data_ingestor
+        self.accept_tasks = accept_tasks
+
 
     def run(self):
-        while True:
-            # TODO
-            # Get pending job
-            # Execute the job and save the result to disk
-            # Repeat until graceful_shutdown
-            pass
+        while self.accept_tasks:
+            try:
+                task = self.task_queue.get(timeout = 1)
+                job_id = task[0]
+                request_type = task[1]
+                question = task[2]['question']
+
+                match request_type:
+                    case "states_mean":
+                        self.data_ingestor.states_mean(job_id, question)
+
+                    case "state_mean":
+                        state_name = task[2]['state']
+                        self.data_ingestor.state_mean(job_id, question, state_name)
+
+                    case "best5":
+                        self.data_ingestor.best_five(job_id, question)
+
+                    case "worst5":
+                        self.data_ingestor.worst_five(job_id, question)
+
+                    case "global_mean":
+                        self.data_ingestor.global_mean(job_id, question)
+
+                    case "state_diff_from_mean":
+                        state_name = task[2]['state']
+                        self.data_ingestor.state_diff_from_mean(job_id, question, state_name)
+
+                    case "diff_from_mean":
+                        self.data_ingestor.diff_from_mean(job_id, question)
+
+                    case "state_mean_by_category":
+                        state_name = task[2]['state']
+                        self.data_ingestor.state_mean_by_category(job_id, question, state_name)
+
+                    case "mean_by_category":
+                        self.data_ingestor.mean_by_category(job_id, question)
+
+                    case _:
+                        break
+            except Empty:
+                if not self.accept_tasks.is_set():
+                    break
+                time.sleep(1)
+
+
