@@ -138,7 +138,7 @@ class DataIngestor:
         # Calculate the mean of 'Data_Value'
         state_average = df_filtered['Data_Value'].mean()
 
-        new_value = global_mean - state_average
+        new_value = float(global_mean - state_average)
         state_dict = {state: new_value}
 
         with open(f"results/{job_id}.json", 'w') as json_file:
@@ -160,7 +160,7 @@ class DataIngestor:
             state_average = df_filtered['Data_Value'].mean()
 
             # Compute the difference from the global mean
-            state_diff = global_mean - state_average
+            state_diff = float(global_mean - state_average)
 
             # Store the difference in a dictionary with the state as the key
             state_diff_dict[state] = state_diff
@@ -171,22 +171,23 @@ class DataIngestor:
     def compute_state_averages(self, state, question):
         # Read CSV file into a DataFrame
         df = pd.read_csv(self.csv_path)
-        
+    
         # Filter rows for the given state and question
         df_state_question = df[(df['LocationDesc'] == state) & (df['Question'] == question)]
-        
+    
         # Group by 'StratificationCategory1' and calculate the mean for each category and its variations
         state_averages = {}
         for category, group in df_state_question.groupby('StratificationCategory1'):
             subcategory_averages = group.groupby('Stratification1')['Data_Value'].mean().to_dict()
-            state_averages[category] = subcategory_averages
+            formatted_subcategory_averages = {f"('{category}', '{subcategory}')": value for subcategory, value in subcategory_averages.items()}
+            state_averages.update(formatted_subcategory_averages)
         
         return state_averages
 
     def state_mean_by_category(self, job_id, question, state):
         # Compute state averages for the specified state and question
         state_averages = self.compute_state_averages(state, question)
-        
+    
         # Write the result to a JSON file
         with open(f"results/{job_id}.json", 'w') as json_file:
             json.dump({state: state_averages}, json_file, separators=(', ', ': '))

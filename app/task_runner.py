@@ -32,9 +32,6 @@ class ThreadPool:
         for t in self.thread_list:
             t.join()  # Wait for all threads to finish
 
-        folder_path = "/results"
-        os.rmdir(folder_path)
-
 class TaskRunner(Thread):
     def __init__(self, task_queue, index, data_ingestor, accept_tasks):
         super().__init__()
