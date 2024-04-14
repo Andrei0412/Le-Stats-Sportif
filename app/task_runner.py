@@ -1,3 +1,5 @@
+"""Module responsible for handling the threads."""
+
 from queue import Queue, Empty
 from threading import Thread, Event
 import time
@@ -5,6 +7,8 @@ import os
 import multiprocessing
 
 class ThreadPool:
+    """Class representing the Thread Pool."""
+
     def __init__(self, data_ingestor):
         self.task_queue = Queue()
         self.thread_list = []
@@ -22,17 +26,20 @@ class ThreadPool:
             t.start()
             self.thread_list.append(t)
 
-            
     def add_task(self, task):
+        """Function responsible for adding tasks to the queue."""
         if self.accept_tasks:
             self.task_queue.put(task)
 
     def stop(self):
-        self.accept_tasks.clear()  # Stop accepting new tasks
+        """Function responsible for signaling that no more tasks shall be accepted."""
+        self.accept_tasks.clear()
         for t in self.thread_list:
-            t.join()  # Wait for all threads to finish
+            t.join()
 
 class TaskRunner(Thread):
+    """Class representing a worker"""
+
     def __init__(self, task_queue, index, data_ingestor, accept_tasks):
         super().__init__()
         self.index = index
@@ -86,5 +93,3 @@ class TaskRunner(Thread):
                 if not self.accept_tasks.is_set():
                     break
                 time.sleep(1)
-
-
