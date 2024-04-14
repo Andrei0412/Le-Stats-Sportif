@@ -149,7 +149,6 @@ class DataIngestor:
         df = self.df
         df_state_question = df[(df['LocationDesc'] == state) & (df['Question'] == question)]
 
-        # Group by 'StratificationCategory1' and calculate the mean for each category, subcategory
         state_averages = {}
         for category, group in df_state_question.groupby('StratificationCategory1'):
             subcategory_averages = group.groupby('Stratification1')['Data_Value'].mean().to_dict()
@@ -178,7 +177,6 @@ class DataIngestor:
         all_state_averages = {}
         all_states = self.df['LocationDesc'].unique()
 
-        # Iterate over each state
         for state in all_states:
             state_averages = self.compute_state_averages(state, question, True)
             all_state_averages.update(state_averages)
